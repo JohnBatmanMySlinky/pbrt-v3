@@ -102,6 +102,7 @@ Spectrum InfiniteAreaLight::Sample_Li(const Interaction &ref, const Point2f &u,
     // Find $(u,v)$ sample coordinates in infinite light texture
     Float mapPdf;
     Point2f uv = distribution->SampleContinuous(u, &mapPdf);
+    VLOG(2) << "SampleLi: uv = " << uv << ", map_pdf = " << mapPdf;
     if (mapPdf == 0) return Spectrum(0.f);
 
     // Convert infinite light sample point to direction
@@ -118,6 +119,7 @@ Spectrum InfiniteAreaLight::Sample_Li(const Interaction &ref, const Point2f &u,
     // Return radiance value for infinite light direction
     *vis = VisibilityTester(ref, Interaction(ref.p + *wi * (2 * worldRadius),
                                              ref.time, mediumInterface));
+    VLOG(2) << "InfLight sample_li: Lmap " << Lmap->Lookup(uv);
     return Spectrum(Lmap->Lookup(uv), SpectrumType::Illuminant);
 }
 

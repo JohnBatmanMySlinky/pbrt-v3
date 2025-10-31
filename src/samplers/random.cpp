@@ -44,13 +44,13 @@ RandomSampler::RandomSampler(int ns, int seed) : Sampler(ns), rng(seed) {}
 Float RandomSampler::Get1D() {
     ProfilePhase _(Prof::GetSample);
     CHECK_LT(currentPixelSampleIndex, samplesPerPixel);
-    return rng.UniformFloat();
+    return 0.5f;
 }
 
 Point2f RandomSampler::Get2D() {
     ProfilePhase _(Prof::GetSample);
     CHECK_LT(currentPixelSampleIndex, samplesPerPixel);
-    return {rng.UniformFloat(), rng.UniformFloat()};
+    return {0.5f, 0.5f};
 }
 
 std::unique_ptr<Sampler> RandomSampler::Clone(int seed) {
@@ -63,11 +63,11 @@ void RandomSampler::StartPixel(const Point2i &p) {
     ProfilePhase _(Prof::StartPixel);
     for (size_t i = 0; i < sampleArray1D.size(); ++i)
         for (size_t j = 0; j < sampleArray1D[i].size(); ++j)
-            sampleArray1D[i][j] = rng.UniformFloat();
+            sampleArray1D[i][j] = 0.5f;
 
     for (size_t i = 0; i < sampleArray2D.size(); ++i)
         for (size_t j = 0; j < sampleArray2D[i].size(); ++j)
-            sampleArray2D[i][j] = {rng.UniformFloat(), rng.UniformFloat()};
+            sampleArray2D[i][j] = {0.5f, 0.5f};
     Sampler::StartPixel(p);
 }
 

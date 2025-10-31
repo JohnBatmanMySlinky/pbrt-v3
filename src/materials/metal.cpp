@@ -68,10 +68,17 @@ void MetalMaterial::ComputeScatteringFunctions(SurfaceInteraction *si,
         uRoughness ? uRoughness->Evaluate(*si) : roughness->Evaluate(*si);
     Float vRough =
         vRoughness ? vRoughness->Evaluate(*si) : roughness->Evaluate(*si);
+
+    VLOG(2) << "uRough PRE: " << uRough;
+    VLOG(2) << "vRough PRE: " << vRough;
     if (remapRoughness) {
         uRough = TrowbridgeReitzDistribution::RoughnessToAlpha(uRough);
         vRough = TrowbridgeReitzDistribution::RoughnessToAlpha(vRough);
     }
+    VLOG(2) << "uRough POST: " << uRough;
+    VLOG(2) << "vRough POST: " << vRough;
+    VLOG(2) << "eta: " << eta->Evaluate(*si);
+    VLOG(2) << "k: " << k->Evaluate(*si);
     Fresnel *frMf = ARENA_ALLOC(arena, FresnelConductor)(1., eta->Evaluate(*si),
                                                          k->Evaluate(*si));
     MicrofacetDistribution *distrib =

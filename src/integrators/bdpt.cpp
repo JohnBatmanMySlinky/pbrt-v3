@@ -85,8 +85,8 @@ int GenerateCameraSubpath(const Scene &scene, Sampler &sampler,
     Float pdfPos, pdfDir;
     path[0] = Vertex::CreateCamera(&camera, ray, beta);
     camera.Pdf_We(ray, &pdfPos, &pdfDir);
-    VLOG(2) << "Starting camera subpath. Ray: " << ray << ", beta " << beta
-            << ", pdfPos " << pdfPos << ", pdfDir " << pdfDir;
+    VLOG(2) << "Starting camera subpath.\n\tRay: " << ray << "\n\tbeta " << beta
+            << "\n\tpdfPos " << pdfPos << "\n\tpdfDir " << pdfDir;
     return RandomWalk(scene, ray, sampler, arena, beta, pdfDir, maxDepth - 1,
                       TransportMode::Radiance, path + 1) +
            1;
@@ -108,6 +108,7 @@ int GenerateLightSubpath(
     Float pdfPos, pdfDir;
     Spectrum Le = light->Sample_Le(sampler.Get2D(), sampler.Get2D(), time, &ray,
                                    &nLight, &pdfPos, &pdfDir);
+    VLOG(2) << "Sample_le: " << Le << ", " << nLight << ", " << ray;
     if (pdfPos == 0 || pdfDir == 0 || Le.IsBlack()) return 0;
 
     // Generate first vertex on light subpath and start random walk
@@ -176,6 +177,8 @@ int RandomWalk(const Scene &scene, RayDifferential ray, Sampler &sampler,
                 break;
             }
 
+            VLOG(2) << "Random walk: intersection\n\tp" << isect.p << "\n\two" << isect.wo << "\n\tn" << isect.n << "\n\tshading.n" << isect.shading.n << "\n\tdpdu" << isect.shading.dpdu << "\n\tdpdv" << isect.shading.dpdv;
+
             // Compute scattering functions for _mode_ and skip over medium
             // boundaries
             isect.ComputeScatteringFunctions(ray, arena, true, mode);
@@ -194,11 +197,12 @@ int RandomWalk(const Scene &scene, RayDifferential ray, Sampler &sampler,
             Spectrum f = isect.bsdf->Sample_f(wo, &wi, sampler.Get2D(), &pdfFwd,
                                               BSDF_ALL, &type);
             VLOG(2) << "Random walk sampled dir " << wi << " f: " << f <<
-                ", pdfFwd: " << pdfFwd;
+                ", pdfFwd: " << pdfFwd << ", sampled_type: " << type;
             if (f.IsBlack() || pdfFwd == 0.f) break;
             beta *= f * AbsDot(wi, isect.shading.n) / pdfFwd;
             VLOG(2) << "Random walk beta now " << beta;
             pdfRev = isect.bsdf->Pdf(wi, wo, BSDF_ALL);
+            VLOG(2) << "random walk pdf_rev = " << pdfRev;
             if (type & BSDF_SPECULAR) {
                 vertex.delta = true;
                 pdfRev = pdfFwd = 0;
@@ -209,7 +213,9 @@ int RandomWalk(const Scene &scene, RayDifferential ray, Sampler &sampler,
         }
 
         // Compute reverse area density at preceding vertex
+        VLOG(2) << "pdf_rev - before - " << prev.pdfRev;
         prev.pdfRev = vertex.ConvertDensity(pdfRev, prev);
+        VLOG(2) << "pdf_rev - after - " << prev.pdfRev;
     }
     return bounces;
 }
@@ -362,6 +368,7 @@ void BDPTIntegrator::Render(const Scene &scene) {
                 if (!InsideExclusive(pPixel, pixelBounds))
                     continue;
                 do {
+                    LOG(INFO) << "pPixel " << pPixel;
                     // Generate a single sample using BDPT
                     Point2f pFilm = (Point2f)pPixel + tileSampler->Get2D();
 
@@ -385,6 +392,17 @@ void BDPTIntegrator::Render(const Scene &scene) {
                         scene, *tileSampler, arena, maxDepth + 1,
                         cameraVertices[0].time(), *lightDistr, lightToIndex,
                         lightVertices);
+
+                    VLOG(2) << "BDPT: Number of real camera vertices: " << nCamera;
+                    VLOG(2) << "BDPT: Number of real light vertices: " << nLight;
+
+                    for (int iii = 0; iii < nCamera; ++iii){
+                        VLOG(2) << cameraVertices[iii];
+                    }
+                    for (int iii = 0; iii < nLight; ++iii){
+                        VLOG(2) << lightVertices[iii];
+                    }
+
 
                     // Execute all BDPT connection strategies
                     Spectrum L(0.f);
@@ -493,16 +511,22 @@ Spectrum ConnectBDPT(
             const std::shared_ptr<Light> &light = scene.lights[lightNum];
             Spectrum lightWeight = light->Sample_Li(
                 pt.GetInteraction(), sampler.Get2D(), &wi, &pdf, &vis);
+            VLOG(2) << "sampled Li from last camera vertex: sampled_li: " << lightWeight << ", wi: " << wi << ", pdf_val: " << pdf;
             if (pdf > 0 && !lightWeight.IsBlack()) {
+                VLOG(2) << "<<<<<SAMPLED A VERTEX>>>>>";
                 EndpointInteraction ei(vis.P1(), light.get());
                 sampled =
                     Vertex::CreateLight(ei, lightWeight / (pdf * lightPdf), 0);
                 sampled.pdfFwd =
                     sampled.PdfLightOrigin(scene, pt, lightDistr, lightToIndex);
                 L = pt.beta * pt.f(sampled, TransportMode::Radiance) * sampled.beta;
+                VLOG(2) << "pt.beta = " << pt.beta << ", f = " << pt.f(sampled, TransportMode::Radiance) << ", sampled.beta = " << sampled.beta;
+                VLOG(2) << "L: " << L;
                 if (pt.IsOnSurface()) L *= AbsDot(wi, pt.ns());
+                VLOG(2) << "L: " << L;
                 // Only check visibility if the path would carry radiance.
                 if (!L.IsBlack()) L *= vis.Tr(scene, sampler);
+                VLOG(2) << "L: " << L;
             }
         }
     } else {

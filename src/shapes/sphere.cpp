@@ -81,6 +81,9 @@ bool Sphere::Intersect(const Ray &r, Float *tHit, SurfaceInteraction *isect,
 
     // Refine sphere intersection point
     pHit *= radius / Distance(pHit, Point3f(0, 0, 0));
+
+    VLOG(2) << "Sphere Intersection: final p = " << pHit;
+
     if (pHit.x == 0 && pHit.y == 0) pHit.x = 1e-5f * radius;
     phi = std::atan2(pHit.y, pHit.x);
     if (phi < 0) phi += 2 * Pi;
@@ -108,6 +111,10 @@ bool Sphere::Intersect(const Ray &r, Float *tHit, SurfaceInteraction *isect,
     Float u = phi / phiMax;
     Float theta = std::acos(Clamp(pHit.z / radius, -1, 1));
     Float v = (theta - thetaMin) / (thetaMax - thetaMin);
+
+    VLOG(2) << "Sphere Intersection: final (u,v) = (" << u << ", " << v
+            << "), phiMax = " << phiMax << ", thetaMin = " << thetaMin
+            << ", thetaMax = " << thetaMax << ", theta = " << theta;
 
     // Compute sphere $\dpdu$ and $\dpdv$
     Float zRadius = std::sqrt(pHit.x * pHit.x + pHit.y * pHit.y);
@@ -149,6 +156,10 @@ bool Sphere::Intersect(const Ray &r, Float *tHit, SurfaceInteraction *isect,
     *isect = (*ObjectToWorld)(SurfaceInteraction(pHit, pError, Point2f(u, v),
                                                  -ray.d, dpdu, dpdv, dndu, dndv,
                                                  ray.time, this));
+
+    VLOG(2) << "Sphere Intersection: dudx: " << isect->dudx
+            << ", dudy: " << isect->dudy << ", dvdx: " << isect->dvdx
+            << ", dvdy: " << isect->dvdy;
 
     // Update _tHit_ for quadric intersection
     *tHit = (Float)tShapeHit;

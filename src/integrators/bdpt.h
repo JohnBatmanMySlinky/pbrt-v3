@@ -228,6 +228,8 @@ struct Vertex {
         wi = Normalize(wi);
         switch (type) {
         case VertexType::Surface:
+            VLOG(2) << "VertexSampling f: " << si.bsdf->f(si.wo, wi);
+            VLOG(2) << "VertexSampling CSN: " << CorrectShadingNormal(si, si.wo, wi, mode);
             return si.bsdf->f(si.wo, wi) *
                 CorrectShadingNormal(si, si.wo, wi, mode);
         case VertexType::Medium:
@@ -287,44 +289,65 @@ struct Vertex {
         return os << v.ToString();
     }
     std::string ToString() const {
-        std::string s = std::string("[Vertex type: ");
+        std::string s = std::string("Vertex(");
         switch (type) {
         case VertexType::Camera:
-            s += "camera";
+            s += "EI)(VTCamera)";
             break;
         case VertexType::Light:
-            s += "light";
+            s += "EI)(VTLight)";
             break;
         case VertexType::Surface:
-            s += "surface";
+            s += "SI)(VTSurface)";
             break;
         case VertexType::Medium:
-            s += "medium";
+            s += "MI)(VTSurface)";
             break;
         }
-        s += std::string(" connectible: ") +
-            std::string(IsConnectible() ? "true" : "false");
-        s += StringPrintf("\n  p: [ %f, %f, %f ] ng: [ %f, %f, %f ]", p().x, p().y,
-                          p().z, ng().x, ng().y, ng().z);
-        s += StringPrintf("\n  pdfFwd: %f pdfRev: %f beta: ", pdfFwd, pdfRev) +
-             beta.ToString();
-        switch (type) {
-        case VertexType::Camera:
-            // TODO
-            break;
-        case VertexType::Light:
-            // TODO
-            break;
-        case VertexType::Surface:
-            s += std::string("\n  bsdf: ") + si.bsdf->ToString();
-            break;
-        case VertexType::Medium:
-            s += std::string("\n  phase: ") + mi.phase->ToString();
-            break;
-        }
-        s += std::string(" ]");
+        s += StringPrintf("\n\tdelta: %d", delta);
+        s += StringPrintf("\n\tpdf_fwd: %f", pdfFwd);
+        s += StringPrintf("\n\tpdf_rev: %f", pdfRev);
+        s += StringPrintf("\n\tp: %f %f %f", p().x, p().y, p().z);
         return s;
     }
+    // std::string ToString() const {
+    //     std::string s = std::string("[Vertex type: ");
+    //     switch (type) {
+    //     case VertexType::Camera:
+    //         s += "camera";
+    //         break;
+    //     case VertexType::Light:
+    //         s += "light";
+    //         break;
+    //     case VertexType::Surface:
+    //         s += "surface";
+    //         break;
+    //     case VertexType::Medium:
+    //         s += "medium";
+    //         break;
+    //     }
+    //     s += std::string(" connectible: ") +
+    //         std::string(IsConnectible() ? "true" : "false");
+    //     s += StringPrintf("\n  p: [ %f, %f, %f ] ng: [ %f, %f, %f ]", p().x, p().y,
+    //                       p().z, ng().x, ng().y, ng().z);
+    //     s += StringPrintf("\n  pdfFwd: %f pdfRev: %f beta: ", pdfFwd, pdfRev) +
+    //          beta.ToString();
+    //     switch (type) {
+    //     case VertexType::Camera:
+    //         // TODO
+    //         break;
+    //     case VertexType::Light:
+    //         // TODO
+    //         break;
+    //     case VertexType::Surface:
+    //         s += std::string("\n  bsdf: ") + si.bsdf->ToString();
+    //         break;
+    //     case VertexType::Medium:
+    //         s += std::string("\n  phase: ") + mi.phase->ToString();
+    //         break;
+    //     }
+    //     s += std::string(" ]");
+    //     return s;
     Float ConvertDensity(Float pdf, const Vertex &next) const {
         // Return solid angle density if _next_ is an infinite area light
         if (next.IsInfiniteLight()) return pdf;

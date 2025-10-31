@@ -261,6 +261,7 @@ void SamplerIntegrator::Render(const Scene &scene) {
 
             // Loop over pixels in tile to render them
             for (Point2i pixel : tileBounds) {
+                VLOG(2) << "Working on pixel " << pixel;
                 {
                     ProfilePhase pp(Prof::StartPixel);
                     tileSampler->StartPixel(pixel);
@@ -277,6 +278,8 @@ void SamplerIntegrator::Render(const Scene &scene) {
                     // Initialize _CameraSample_ for current sample
                     CameraSample cameraSample =
                         tileSampler->GetCameraSample(pixel);
+
+                    VLOG(2) << "camera_sample: " << cameraSample;
 
                     // Generate camera ray for current sample
                     RayDifferential ray;

@@ -130,6 +130,8 @@ void SurfaceInteraction::ComputeDifferentials(
             dim[0] = 0;
             dim[1] = 1;
         }
+        VLOG(2) << "Computed Differentials: " << dpdu << ", " << dpdv;
+        VLOG(2) << "Computed Differentials: " << dim[0] << ' ' << dim[1];
 
         // Initialize _A_, _Bx_, and _By_ matrices for offset computation
         Float A[2][2] = {{dpdu[dim[0]], dpdv[dim[0]]},
@@ -138,6 +140,7 @@ void SurfaceInteraction::ComputeDifferentials(
         Float By[2] = {py[dim[0]] - p[dim[0]], py[dim[1]] - p[dim[1]]};
         if (!SolveLinearSystem2x2(A, Bx, &dudx, &dvdx)) dudx = dvdx = 0;
         if (!SolveLinearSystem2x2(A, By, &dudy, &dvdy)) dudy = dvdy = 0;
+        VLOG(2) << "ComputeDifferentials: " << A[0][0] << ' ' << A[0][1] << ' '<< A[1][0] << ' ' << A[1][1] << ' ' << Bx[0] << ' ' << Bx[1] << ' ' << By[0] << ' ' << By[1] << ' ' << dudx << ' ' << dvdx << ' ' << dudy << ' ' << dvdy;
     } else {
     fail:
         dudx = dvdx = 0;

@@ -88,6 +88,9 @@ class ImageTexture : public Texture<Treturn> {
         Vector2f dstdx, dstdy;
         Point2f st = mapping->Map(si, &dstdx, &dstdy);
         Tmemory mem = mipmap->Lookup(st, dstdx, dstdy);
+        VLOG(2) << "ImageTexture::Evaluate: st: " << st
+                << ", dstdx: " << dstdx << ", dstdy: " << dstdy
+                << ", mem: " << mem;
         Treturn ret;
         convertOut(mem, &ret);
         return ret;

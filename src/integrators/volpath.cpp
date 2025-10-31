@@ -151,8 +151,12 @@ Spectrum VolPathIntegrator::Li(const RayDifferential &r, const Scene &scene,
             if (isect.bssrdf && (flags & BSDF_TRANSMISSION)) {
                 // Importance sample the BSSRDF
                 SurfaceInteraction pi;
+                Float why;
+                why = sampler.Get1D();
+                Point2f god;
+                god = sampler.Get2D();
                 Spectrum S = isect.bssrdf->Sample_S(
-                    scene, sampler.Get1D(), sampler.Get2D(), arena, &pi, &pdf);
+                    scene, why, god, arena, &pi, &pdf);
                 DCHECK(std::isinf(beta.y()) == false);
                 if (S.IsBlack() || pdf == 0) break;
                 beta *= S / pdf;

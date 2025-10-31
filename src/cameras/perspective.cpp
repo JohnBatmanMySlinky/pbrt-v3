@@ -61,9 +61,12 @@ PerspectiveCamera::PerspectiveCamera(const AnimatedTransform &CameraToWorld,
     Point2i res = film->fullResolution;
     Point3f pMin = RasterToCamera(Point3f(0, 0, 0));
     Point3f pMax = RasterToCamera(Point3f(res.x, res.y, 0));
+    VLOG(2) << "pMin: " << pMin << ", pMax: " << pMax;
     pMin /= pMin.z;
     pMax /= pMax.z;
+    VLOG(2) << "pMin: " << pMin << ", pMax: " << pMax;
     A = std::abs((pMax.x - pMin.x) * (pMax.y - pMin.y));
+    VLOG(2) << "A: " << A;
 }
 
 Float PerspectiveCamera::GenerateRay(const CameraSample &sample,
@@ -73,6 +76,7 @@ Float PerspectiveCamera::GenerateRay(const CameraSample &sample,
     Point3f pFilm = Point3f(sample.pFilm.x, sample.pFilm.y, 0);
     Point3f pCamera = RasterToCamera(pFilm);
     *ray = Ray(Point3f(0, 0, 0), Normalize(Vector3f(pCamera)));
+
     // Modify ray for depth of field
     if (lensRadius > 0) {
         // Sample point on lens
@@ -100,6 +104,9 @@ Float PerspectiveCamera::GenerateRayDifferential(const CameraSample &sample,
     Point3f pCamera = RasterToCamera(pFilm);
     Vector3f dir = Normalize(Vector3f(pCamera.x, pCamera.y, pCamera.z));
     *ray = RayDifferential(Point3f(0, 0, 0), dir);
+    VLOG(2) << "p_film: " << pFilm << ", p_camera: " << pCamera << ", ray: " << *ray;
+    VLOG(2) << "camera_sample: " << sample << ", lens_radius: " << lensRadius << ", shutter open close: " << shutterOpen << ", " << shutterClose;
+
     // Modify ray for depth of field
     if (lensRadius > 0) {
         // Sample point on lens
@@ -140,6 +147,7 @@ Float PerspectiveCamera::GenerateRayDifferential(const CameraSample &sample,
     ray->medium = medium;
     *ray = CameraToWorld(*ray);
     ray->hasDifferentials = true;
+    VLOG(2) << "p_film: " << pFilm << ", p_camera: " << pCamera << ", ray: " << *ray;
     return 1;
 }
 
@@ -181,10 +189,14 @@ void PerspectiveCamera::Pdf_We(const Ray &ray, Float *pdfPos,
         *pdfPos = *pdfDir = 0;
         return;
     }
+    VLOG(2) << "COS_THETA: " << cosTheta;
 
     // Map ray $(\p{}, \w{})$ onto the raster grid
     Point3f pFocus = ray((lensRadius > 0 ? focalDistance : 1) / cosTheta);
     Point3f pRaster = Inverse(RasterToCamera)(Inverse(c2w)(pFocus));
+
+    VLOG(2) << "pFocus: " << pFocus;
+    VLOG(2) << "pRaster: " << pRaster;
 
     // Return zero probability for out of bounds points
     Bounds2i sampleBounds = film->GetSampleBounds();
@@ -196,6 +208,8 @@ void PerspectiveCamera::Pdf_We(const Ray &ray, Float *pdfPos,
 
     // Compute lens area of perspective camera
     Float lensArea = lensRadius != 0 ? (Pi * lensRadius * lensRadius) : 1;
+    VLOG(2) << "lensArea: " << lensArea;
+    VLOG(2) << "A: " << A;
     *pdfPos = 1 / lensArea;
     *pdfDir = 1 / (A * cosTheta * cosTheta * cosTheta);
 }

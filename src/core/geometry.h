@@ -906,10 +906,12 @@ class RayDifferential : public Ray {
                  rxDirection.HasNaNs() || ryDirection.HasNaNs()));
     }
     void ScaleDifferentials(Float s) {
+        VLOG(2) << "ScaleDifferentials: " << s << ", " << rxOrigin << ", " << ryOrigin << ", " << rxDirection << ", " << ryDirection;
         rxOrigin = o + (rxOrigin - o) * s;
         ryOrigin = o + (ryOrigin - o) * s;
         rxDirection = d + (rxDirection - d) * s;
         ryDirection = d + (ryDirection - d) * s;
+        VLOG(2) << "ScaleDifferentials: " << s << ", " << rxOrigin << ", " << ryOrigin << ", " << rxDirection << ", " << ryDirection;
     }
     friend std::ostream &operator<<(std::ostream &os, const RayDifferential &r) {
         os << "[ " << (Ray &)r << " has differentials: " <<

@@ -47,11 +47,17 @@ void MatteMaterial::ComputeScatteringFunctions(SurfaceInteraction *si,
                                                TransportMode mode,
                                                bool allowMultipleLobes) const {
     // Perform bump mapping with _bumpMap_, if present
-    if (bumpMap) Bump(bumpMap, si);
+    if (bumpMap){
+        VLOG(2) << "BUMP BUMP BUMP";
+        VLOG(2) << "SurfaceInteraction Pre Bump " << si;
+        Bump(bumpMap, si);
+        VLOG(2) << "SurfaceInteraction Post Bump " << si;
+    } 
 
     // Evaluate textures for _MatteMaterial_ material and allocate BRDF
     si->bsdf = ARENA_ALLOC(arena, BSDF)(*si);
     Spectrum r = Kd->Evaluate(*si).Clamp();
+    VLOG(2) << "Spectrum  Kd: " << r;
     Float sig = Clamp(sigma->Evaluate(*si), 0, 90);
     if (!r.IsBlack()) {
         if (sig == 0)

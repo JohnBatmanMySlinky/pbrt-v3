@@ -129,13 +129,32 @@ MIPMap<T>::MIPMap(const Point2i &res, const T *img, bool doTrilinear,
         LOG(INFO) << "Resampling MIPMap from " << resolution << " to " <<
             resPow2 << ". Ratio= " << (Float(resPow2.x * resPow2.y) /
                                        Float(resolution.x * resolution.y));
+
+        // for (int x = 0; x < resolution.x * resolution.y; ++x) {
+        //     VLOG(2) << "Original image " << x << " " << img[x];
+        // }
+        // VLOG(2) << "----------------------------------------";
         // Resample image in $s$ direction
         std::unique_ptr<ResampleWeight[]> sWeights =
             resampleWeights(resolution[0], resPow2[0]);
         resampledImage.reset(new T[resPow2[0] * resPow2[1]]);
 
+        // for (int x = 0; x < resPow2[0]; ++x) {
+        //     VLOG(2) << "Resample weights " << x << " " << sWeights[x].firstTexel << " " << sWeights[x].weight[0] << " "
+        //             << sWeights[x].weight[1] << " " << sWeights[x].weight[2] << " "
+        //             << sWeights[x].weight[3];
+        // }
+        // VLOG(2) << "----------------------------------------";
+
+        // if (wrapMode == ImageWrap::Repeat)
+        //     VLOG(2) << "Wrap mode: Repeat";
+        // else if (wrapMode == ImageWrap::Clamp)
+        //     VLOG(2) << "Wrap mode: Clamp";
+        // else    
+        //     VLOG(2) << "Wrap mode: Other";
+
         // Apply _sWeights_ to zoom in $s$ direction
-        ParallelFor([&](int t) {
+        for (int t = 0; t < resolution[1]; ++t){
             for (int s = 0; s < resPow2[0]; ++s) {
                 // Compute texel $(s,t)$ in $s$-zoomed image
                 resampledImage[t * resPow2[0] + s] = 0.f;
@@ -145,13 +164,24 @@ MIPMap<T>::MIPMap(const Point2i &res, const T *img, bool doTrilinear,
                         origS = Mod(origS, resolution[0]);
                     else if (wrapMode == ImageWrap::Clamp)
                         origS = Clamp(origS, 0, resolution[0] - 1);
-                    if (origS >= 0 && origS < (int)resolution[0])
+                    if (origS >= 0 && origS < (int)resolution[0]){
                         resampledImage[t * resPow2[0] + s] +=
                             sWeights[s].weight[j] *
                             img[t * resolution[0] + origS];
+                        // VLOG(2) << "MIPMAP READ: " << s << ", " << origS << ", " << t << ", " << j << ", "
+                        //         << resampledImage[t * resPow2[0] + s] << " "
+                        //         << sWeights[s].weight[j] << ", "
+                        //         << img[t * resolution[0] + origS];
+                    }
                 }
             }
-        }, resolution[1], 16);
+        }
+        // VLOG(2) << "----------------------------------------";
+
+        // for (int x = 0; x < resPow2[0] * resPow2[1]; ++x) {
+        //     VLOG(2) << "Resampled image " << x << " " << resampledImage[x];
+        // }
+        // VLOG(2) << "------------------------------------------------";
 
         // Resample image in $t$ direction
         std::unique_ptr<ResampleWeight[]> tWeights =
@@ -160,7 +190,7 @@ MIPMap<T>::MIPMap(const Point2i &res, const T *img, bool doTrilinear,
         int nThreads = MaxThreadIndex();
         for (int i = 0; i < nThreads; ++i)
             resampleBufs.push_back(new T[resPow2[1]]);
-        ParallelFor([&](int s) {
+        for (int s = 0; s < resPow2[0]; ++s){
             T *workData = resampleBufs[ThreadIndex];
             for (int t = 0; t < resPow2[1]; ++t) {
                 workData[t] = 0.f;
@@ -177,7 +207,7 @@ MIPMap<T>::MIPMap(const Point2i &res, const T *img, bool doTrilinear,
             }
             for (int t = 0; t < resPow2[1]; ++t)
                 resampledImage[t * resPow2[0] + s] = clamp(workData[t]);
-        }, resPow2[0], 32);
+        }
         for (auto ptr : resampleBufs) delete[] ptr;
         resolution = resPow2;
     }
@@ -275,7 +305,9 @@ T MIPMap<T>::triangle(int level, const Point2f &st) const {
 
 template <typename T>
 T MIPMap<T>::Lookup(const Point2f &st, Vector2f dst0, Vector2f dst1) const {
+    VLOG(2) << "mipmap: wrapmode: " << (int)wrapMode;
     if (doTrilinear) {
+        VLOG(2) << "mipmap: doing trilinear";
         Float width = std::max(std::max(std::abs(dst0[0]), std::abs(dst0[1])),
                                std::max(std::abs(dst1[0]), std::abs(dst1[1])));
         return Lookup(st, width);
@@ -287,17 +319,43 @@ T MIPMap<T>::Lookup(const Point2f &st, Vector2f dst0, Vector2f dst1) const {
     Float majorLength = dst0.Length();
     Float minorLength = dst1.Length();
 
+    VLOG(2) << "ImageTexture: dst=" << dst0 << ", " << dst1
+            << " (lengths " << majorLength << ", " << minorLength << ") - st=" << st;
+
     // Clamp ellipse eccentricity if too large
     if (minorLength * maxAnisotropy < majorLength && minorLength > 0) {
         Float scale = majorLength / (minorLength * maxAnisotropy);
         dst1 *= scale;
         minorLength *= scale;
+            VLOG(2) << "ImageTexture: dst=" << dst0 << ", " << dst1
+            << " (lengths " << majorLength << ", " << minorLength << ") - st=" << st;
     }
+    VLOG(2) << "ImageTexture: dst=" << dst0 << ", " << dst1
+            << " (lengths " << majorLength << ", " << minorLength << ") - st=" << st;
+
+    int level;
+    level = 0;
+    level = Clamp(level, 0, Levels() - 1);
+    Float s = st[0] * pyramid[level]->uSize() - 0.5f;
+    Float t = st[1] * pyramid[level]->vSize() - 0.5f;
+    int s0 = std::floor(s), t0 = std::floor(t);
+    Float ds = s - s0, dt = t - t0;
+    VLOG(2) << "ImageTexture: st=" << st << " -> (s,t)=(" << s << ", " << t
+            << "), (s0,t0)=(" << s0 << ", " << t0 << "), (ds,dt)=(" << ds
+            << ", " << dt << ")";
+    VLOG(2) << "ImageTexture: a: " << (1 - ds) * (1 - dt) * Texel(level, s0, t0) << ", b: " << 
+           (1 - ds) * dt * Texel(level, s0, t0 + 1) << ", c: " <<
+           ds * (1 - dt) * Texel(level, s0 + 1, t0) << ", d: " <<
+           ds * dt * Texel(level, s0 + 1, t0 + 1);
+
     if (minorLength == 0) return triangle(0, st);
 
     // Choose level of detail for EWA lookup and perform EWA filtering
     Float lod = std::max((Float)0, Levels() - (Float)1 + Log2(minorLength));
     int ilod = std::floor(lod);
+    VLOG(2) << "mipmap: levels = " << Levels() << ", lod = " << lod
+            << ", ilod = " << ilod;
+    VLOG(2) << "mipmpap: EWA1: " << EWA(ilod, st, dst0, dst1) << ", EWA2: " << EWA(ilod + 1, st, dst0, dst1);
     return Lerp(lod - ilod, EWA(ilod, st, dst0, dst1),
                 EWA(ilod + 1, st, dst0, dst1));
 }
@@ -313,6 +371,8 @@ T MIPMap<T>::EWA(int level, Point2f st, Vector2f dst0, Vector2f dst1) const {
     dst1[0] *= pyramid[level]->uSize();
     dst1[1] *= pyramid[level]->vSize();
 
+    VLOG(2) << "EWA: st: " << st << ", dst0: " << dst0 << ", dst1" << dst1;
+
     // Compute ellipse coefficients to bound EWA filter region
     Float A = dst0[1] * dst0[1] + dst1[1] * dst1[1] + 1;
     Float B = -2 * (dst0[0] * dst0[1] + dst1[0] * dst1[1]);
@@ -322,6 +382,8 @@ T MIPMap<T>::EWA(int level, Point2f st, Vector2f dst0, Vector2f dst1) const {
     B *= invF;
     C *= invF;
 
+    VLOG(2) << "EWA: A=" << A << ", B=" << B << ", C=" << C;
+
     // Compute the ellipse's $(s,t)$ bounding box in texture space
     Float det = -B * B + 4 * A * C;
     Float invDet = 1 / det;
@@ -330,6 +392,9 @@ T MIPMap<T>::EWA(int level, Point2f st, Vector2f dst0, Vector2f dst1) const {
     int s1 = std::floor(st[0] + 2 * invDet * uSqrt);
     int t0 = std::ceil(st[1] - 2 * invDet * vSqrt);
     int t1 = std::floor(st[1] + 2 * invDet * vSqrt);
+
+    VLOG(2) << "EWA: s0=" << s0 << ", s1=" << s1 << ", t0=" << t0
+            << ", t1=" << t1;
 
     // Scan over ellipse bound and compute quadratic equation
     T sum(0.f);
@@ -346,6 +411,8 @@ T MIPMap<T>::EWA(int level, Point2f st, Vector2f dst0, Vector2f dst1) const {
                 Float weight = weightLut[index];
                 sum += Texel(level, is, it) * weight;
                 sumWts += weight;
+                VLOG(2) << "EWA: index: " << index << ", weight: " << weight << ", texel: " << Texel(level, is, it)
+                        << ", sum: " << sum << ", sumWts: " << sumWts;
             }
         }
     }

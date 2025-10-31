@@ -50,6 +50,7 @@ void SubstrateMaterial::ComputeScatteringFunctions(
     si->bsdf = ARENA_ALLOC(arena, BSDF)(*si);
     Spectrum d = Kd->Evaluate(*si).Clamp();
     Spectrum s = Ks->Evaluate(*si).Clamp();
+    VLOG(2) << "Substrate: d: " << d << ", s: " << s;
     Float roughu = nu->Evaluate(*si);
     Float roughv = nv->Evaluate(*si);
 

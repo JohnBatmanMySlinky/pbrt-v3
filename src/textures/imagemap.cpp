@@ -62,6 +62,7 @@ MIPMap<Tmemory> *ImageTexture<Tmemory, Treturn>::GetTexture(
     ProfilePhase _(Prof::TextureLoading);
     Point2i resolution;
     std::unique_ptr<RGBSpectrum[]> texels = ReadImage(filename, &resolution);
+    VLOG(2) << "GAMMA IS " << gamma;
     if (!texels) {
         Warning("Creating a constant grey texture to replace \"%s\".",
                 filename.c_str());
@@ -85,8 +86,10 @@ MIPMap<Tmemory> *ImageTexture<Tmemory, Treturn>::GetTexture(
         // Convert texels to type _Tmemory_ and create _MIPMap_
         std::unique_ptr<Tmemory[]> convertedTexels(
             new Tmemory[resolution.x * resolution.y]);
-        for (int i = 0; i < resolution.x * resolution.y; ++i)
+        for (int i = 0; i < resolution.x * resolution.y; ++i){
             convertIn(texels[i], &convertedTexels[i], scale, gamma);
+            // VLOG(2) << "CONVERSION: IN: " << texels[i] << ", OUT: " << convertedTexels[i];
+        }
         mipmap = new MIPMap<Tmemory>(resolution, convertedTexels.get(),
                                      doTrilinear, maxAniso, wrap);
     } else {

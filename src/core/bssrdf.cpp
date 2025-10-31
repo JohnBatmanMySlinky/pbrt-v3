@@ -149,12 +149,22 @@ void ComputeBeamDiffusionBSSRDF(Float g, Float eta, BSSRDFTable *t) {
     for (int i = 2; i < t->nRadiusSamples; ++i)
         t->radiusSamples[i] = t->radiusSamples[i - 1] * 1.2f;
 
+    for (int i = 0; i < t->nRadiusSamples; ++i){
+        VLOG(2) << "BSSDRFTABLE::radiusSamples " << i << " = " << t->radiusSamples[i];
+    }
+
     // Choose albedo values of the diffusion profile discretization
     for (int i = 0; i < t->nRhoSamples; ++i)
         t->rhoSamples[i] =
             (1 - std::exp(-8 * i / (Float)(t->nRhoSamples - 1))) /
             (1 - std::exp(-8));
-    ParallelFor([&](int i) {
+
+    for (int i = 0; i < t->nRhoSamples; ++i){
+        VLOG(2) << "BSSDRFTABLE::rhoSamples " << i << " = " << t->rhoSamples[i];
+    }
+
+    // ParallelFor([&](int i) {
+    for (int i = 0; i < t->nRhoSamples; ++i){
         // Compute the diffusion profile for the _i_th albedo sample
 
         // Compute scattering profile for chosen albedo $\rho$
@@ -163,6 +173,10 @@ void ComputeBeamDiffusionBSSRDF(Float g, Float eta, BSSRDFTable *t) {
             t->profile[i * t->nRadiusSamples + j] =
                 2 * Pi * r * (BeamDiffusionSS(rho, 1 - rho, g, eta, r) +
                               BeamDiffusionMS(rho, 1 - rho, g, eta, r));
+
+            VLOG(2) << "BSSDRFTABLE::BeamDiffusionSS (" << i << ", " << j << ") = " << BeamDiffusionSS(rho, 1 - rho, g, eta, r);
+            VLOG(2) << "BSSDRFTABLE::BeamDiffusionMS (" << i << ", " << j << ") = " << BeamDiffusionMS(rho, 1 - rho, g, eta, r);
+            VLOG(2) << "BSSDRFTABLE::profile (" << i << ", " << j << ") = " << t->profile[i * t->nRadiusSamples + j];
         }
 
         // Compute effective albedo $\rho_{\roman{eff}}$ and CDF for importance
@@ -171,7 +185,9 @@ void ComputeBeamDiffusionBSSRDF(Float g, Float eta, BSSRDFTable *t) {
             IntegrateCatmullRom(t->nRadiusSamples, t->radiusSamples.get(),
                                 &t->profile[i * t->nRadiusSamples],
                                 &t->profileCDF[i * t->nRadiusSamples]);
-    }, t->nRhoSamples);
+        VLOG(2) << "BSSDRFTABLE::rhoEff " << i << " " << t->rhoEff[i];
+    // }, t->nRhoSamples);
+    }
 }
 
 void SubsurfaceFromDiffuse(const BSSRDFTable &t, const Spectrum &rhoEff,
@@ -248,6 +264,7 @@ Spectrum SeparableBSSRDF::Sample_Sp(const Scene &scene, Float u1,
                                     const Point2f &u2, MemoryArena &arena,
                                     SurfaceInteraction *pi, Float *pdf) const {
     ProfilePhase pp(Prof::BSSRDFEvaluation);
+    VLOG(2) << "why: " << u1 << ", god: " << u2;
     // Choose projection axis for BSSRDF sampling
     Vector3f vx, vy, vz;
     if (u1 < .5f) {
@@ -275,11 +292,13 @@ Spectrum SeparableBSSRDF::Sample_Sp(const Scene &scene, Float u1,
 
     // Sample BSSRDF profile in polar coordinates
     Float r = Sample_Sr(ch, u2[0]);
+    VLOG(2) << "beep boop integrating::sample_sr:: " << r << " - " << ch << " - " << u2[0];
     if (r < 0) return Spectrum(0.f);
     Float phi = 2 * Pi * u2[1];
 
     // Compute BSSRDF profile bounds and intersection height
     Float rMax = Sample_Sr(ch, 0.999f);
+    VLOG(2) << "beep boop integrating::sample_sr:: " << rMax;
     if (r >= rMax) return Spectrum(0.f);
     Float l = 2 * std::sqrt(rMax * rMax - r * r);
 
@@ -288,6 +307,8 @@ Spectrum SeparableBSSRDF::Sample_Sp(const Scene &scene, Float u1,
     base.p =
         po.p + r * (vx * std::cos(phi) + vy * std::sin(phi)) - l * vz * 0.5f;
     base.time = po.time;
+    VLOG(2) << "beep boop integratint::interaction " << base.p << ", " << base.time;
+
     Point3f pTarget = base.p + l * vz;
 
     // Intersect BSSRDF sampling ray against the scene geometry
@@ -304,15 +325,18 @@ Spectrum SeparableBSSRDF::Sample_Sp(const Scene &scene, Float u1,
     int nFound = 0;
     while (true) {
         Ray r = base.SpawnRayTo(pTarget);
+        VLOG(2) << "beep boop integrating::booping around " << r;
         if (r.d == Vector3f(0, 0, 0) || !scene.Intersect(r, &ptr->si))
             break;
 
         base = ptr->si;
+        VLOG(2) << "beep boop integrating::booping around " << base.p << ", " << base.time;
         // Append admissible intersection to _IntersectionChain_
         if (ptr->si.primitive->GetMaterial() == this->material) {
             IntersectionChain *next = ARENA_ALLOC(arena, IntersectionChain)();
             ptr->next = next;
             ptr = next;
+            VLOG(2) << "PUSHHHH";
             nFound++;
         }
     }

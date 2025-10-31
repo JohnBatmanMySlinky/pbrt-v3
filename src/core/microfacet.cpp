@@ -159,6 +159,7 @@ Float TrowbridgeReitzDistribution::D(const Vector3f &wh) const {
     Float e =
         (Cos2Phi(wh) / (alphax * alphax) + Sin2Phi(wh) / (alphay * alphay)) *
         tan2Theta;
+    VLOG(2) << "TBR-D: tan2theta = " << tan2Theta << ", cos4theta = " << cos4Theta << ", e = " << e;
     return 1 / (Pi * alphax * alphay * cos4Theta * (1 + e) * (1 + e));
 }
 
@@ -238,9 +239,11 @@ Vector3f BeckmannDistribution::Sample_wh(const Vector3f &wo,
 static void TrowbridgeReitzSample11(Float cosTheta, Float U1, Float U2,
                                     Float *slope_x, Float *slope_y) {
     // special case (normal incidence)
+    VLOG(2) << "TrowbridgeReitzSample11: cosTheta: " << cosTheta << ", U1: " << U1 << ", U2: " << U2;
     if (cosTheta > .9999) {
         Float r = sqrt(U1 / (1 - U1));
         Float phi = 6.28318530718 * U2;
+        VLOG(2) << "TrowbridgeReitzSample11: r: " << r << ", phi: " << phi;
         *slope_x = r * cos(phi);
         *slope_y = r * sin(phi);
         return;
@@ -251,17 +254,26 @@ static void TrowbridgeReitzSample11(Float cosTheta, Float U1, Float U2,
     Float tanTheta = sinTheta / cosTheta;
     Float a = 1 / tanTheta;
     Float G1 = 2 / (1 + std::sqrt(1.f + 1.f / (a * a)));
+    VLOG(2) << "TrowbridgeReitzSample11: G1: " << G1;
+
 
     // sample slope_x
     Float A = 2 * U1 / G1 - 1;
+    VLOG(2) << "TrowbridgeReitzSample11: A: " << A;
     Float tmp = 1.f / (A * A - 1.f);
     if (tmp > 1e10) tmp = 1e10;
+    VLOG(2) << "TrowbridgeReitzSample11: tmp: " << tmp;
     Float B = tanTheta;
+    VLOG(2) << "TrowbridgeReitzSample11: B: " << B;
     Float D = std::sqrt(
         std::max(Float(B * B * tmp * tmp - (A * A - B * B) * tmp), Float(0)));
+    VLOG(2) << "TrowbridgeReitzSample11: D: " << D;
+    
     Float slope_x_1 = B * tmp - D;
     Float slope_x_2 = B * tmp + D;
     *slope_x = (A < 0 || slope_x_2 > 1.f / tanTheta) ? slope_x_1 : slope_x_2;
+    VLOG(2) << "TrowbridgeReitzSample11: slope_x_1: " << slope_x_1 << ", slope_x_2: " << slope_x_2;
+    VLOG(2) << "TrowbridgeReitzSample11: slope_x: " << *slope_x;
 
     // sample slope_y
     Float S;
@@ -272,10 +284,14 @@ static void TrowbridgeReitzSample11(Float cosTheta, Float U1, Float U2,
         S = -1.f;
         U2 = 2.f * (.5f - U2);
     }
+    VLOG(2) << "TrowbridgeReitzSample11: S: " << S << ", U2: " << U2;
     Float z =
         (U2 * (U2 * (U2 * 0.27385f - 0.73369f) + 0.46341f)) /
         (U2 * (U2 * (U2 * 0.093073f + 0.309420f) - 1.000000f) + 0.597999f);
     *slope_y = S * z * std::sqrt(1.f + *slope_x * *slope_x);
+    VLOG(2) << "TrowbridgeReitzSample11: z: " << z;
+    VLOG(2) << "TrowbridgeReitzSample11: slope_y: " << *slope_y;
+
 
     CHECK(!std::isinf(*slope_y));
     CHECK(!std::isnan(*slope_y));
@@ -286,15 +302,18 @@ static Vector3f TrowbridgeReitzSample(const Vector3f &wi, Float alpha_x,
     // 1. stretch wi
     Vector3f wiStretched =
         Normalize(Vector3f(alpha_x * wi.x, alpha_y * wi.y, wi.z));
+    VLOG(2) << "TrowbridgeReitzSample: wiStretched: " << wiStretched;
 
     // 2. simulate P22_{wi}(x_slope, y_slope, 1, 1)
     Float slope_x, slope_y;
     TrowbridgeReitzSample11(CosTheta(wiStretched), U1, U2, &slope_x, &slope_y);
+    VLOG(2) << "TrowbridgeReitzSample: slope_x: " << slope_x << ", slope_y: " << slope_y;
 
     // 3. rotate
     Float tmp = CosPhi(wiStretched) * slope_x - SinPhi(wiStretched) * slope_y;
     slope_y = SinPhi(wiStretched) * slope_x + CosPhi(wiStretched) * slope_y;
     slope_x = tmp;
+    VLOG(2) << "TrowbridgeReitzSample: slope_x: " << slope_x << ", slope_y: " << slope_y;
 
     // 4. unstretch
     slope_x = alpha_x * slope_x;
@@ -307,6 +326,7 @@ static Vector3f TrowbridgeReitzSample(const Vector3f &wi, Float alpha_x,
 Vector3f TrowbridgeReitzDistribution::Sample_wh(const Vector3f &wo,
                                                 const Point2f &u) const {
     Vector3f wh;
+    VLOG(2) << "TrowbridgeReitzDistribution::Sample_wh: sampleVisibleArea: " << sampleVisibleArea;
     if (!sampleVisibleArea) {
         Float cosTheta = 0, phi = (2 * Pi) * u[1];
         if (alphax == alphay) {
@@ -330,6 +350,7 @@ Vector3f TrowbridgeReitzDistribution::Sample_wh(const Vector3f &wo,
     } else {
         bool flip = wo.z < 0;
         wh = TrowbridgeReitzSample(flip ? -wo : wo, alphax, alphay, u[0], u[1]);
+        VLOG(2) << "TrowbridgeReitzDistribution::Sample_wh: flip: " << flip << " wh: " << wh << " wo: " << wo << ", alphax: " << alphax << ", alphay: " << alphay << ", u: " << u;
         if (flip) wh = -wh;
     }
     return wh;
@@ -337,10 +358,14 @@ Vector3f TrowbridgeReitzDistribution::Sample_wh(const Vector3f &wo,
 
 Float MicrofacetDistribution::Pdf(const Vector3f &wo,
                                   const Vector3f &wh) const {
-    if (sampleVisibleArea)
+    if (sampleVisibleArea) {
+        VLOG(2) << "TBR-D: " << D(wh);
+        VLOG(2) << "TBR-G1: " << G1(wo);
         return D(wh) * G1(wo) * AbsDot(wo, wh) / AbsCosTheta(wo);
-    else
+    }
+    else {
         return D(wh) * AbsCosTheta(wh);
+    }
 }
 
 }  // namespace pbrt

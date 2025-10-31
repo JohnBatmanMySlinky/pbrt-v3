@@ -47,7 +47,12 @@ void GlassMaterial::ComputeScatteringFunctions(SurfaceInteraction *si,
                                                TransportMode mode,
                                                bool allowMultipleLobes) const {
     // Perform bump mapping with _bumpMap_, if present
-    if (bumpMap) Bump(bumpMap, si);
+    if (bumpMap) {
+        VLOG(2) << "BUMP BUMP BUMP";
+        VLOG(2) << "SI PRE :\n\tp: " << si->p << "\n\t:t: " << si->time << "\n\two: " << si->wo << "\n\tn: " << si->n << "\n\tuv: " << si->uv << "\n\tdpdu: " << si->dpdu << "\n\tdpdv: " << si->dpdv << "\n\tdndu: " << si->dndu << "\n\tdndv: " << si->dndv << "\n\tsn: " << si->shading.n << "\n\tsdpdu: " << si->shading.dpdu << "\n\tsdpdv: " << si->shading.dpdv << "\n\tdudx: " << si->dudx << "\n\tdudy: " << si->dudy << "\n\tdvdx: " << si->dvdx << "\n\tdvdy: " << si->dvdy << "\n\tdpdx: " << si->dpdx << "\n\tdpdy: " << si->dpdy;
+        Bump(bumpMap, si);
+        VLOG(2) << "SI POST:\n\tp: " << si->p << "\n\t:t: " << si->time << "\n\two: " << si->wo << "\n\tn: " << si->n << "\n\tuv: " << si->uv << "\n\tdpdu: " << si->dpdu << "\n\tdpdv: " << si->dpdv << "\n\tdndu: " << si->dndu << "\n\tdndv: " << si->dndv << "\n\tsn: " << si->shading.n << "\n\tsdpdu: " << si->shading.dpdu << "\n\tsdpdv: " << si->shading.dpdv << "\n\tdudx: " << si->dudx << "\n\tdudy: " << si->dudy << "\n\tdvdx: " << si->dvdx << "\n\tdvdy: " << si->dvdy << "\n\tdpdx: " << si->dpdx << "\n\tdpdy: " << si->dpdy;
+    }
     Float eta = index->Evaluate(*si);
     Float urough = uRoughness->Evaluate(*si);
     Float vrough = vRoughness->Evaluate(*si);

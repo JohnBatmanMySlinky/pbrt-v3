@@ -276,6 +276,7 @@ static RGBSpectrum *ReadImagePNG(const std::string &name, int *width,
             c[0] = src[0] / 255.f;
             c[1] = src[1] / 255.f;
             c[2] = src[2] / 255.f;
+            // VLOG(2) << "IMAGE IO: x = " << x << ", y = " << y << ", c = " << c[0] << ", " << c[1] << ", " << c[2] << " " << RGBSpectrum::FromRGB(c);
             ret[y * *width + x] = RGBSpectrum::FromRGB(c);
         }
     }

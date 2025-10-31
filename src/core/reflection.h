@@ -169,13 +169,16 @@ class BSDF {
           ns(si.shading.n),
           ng(si.n),
           ss(Normalize(si.shading.dpdu)),
-          ts(Cross(ns, ss)) {}
+          ts(Cross(ns, ss)) {
+            VLOG(2) << "BSDF::BSDF ns = " << ns << ", ng = " << ng << ", ss = " << ss << ", ts = " << ts;
+          }
     void Add(BxDF *b) {
         CHECK_LT(nBxDFs, MaxBxDFs);
         bxdfs[nBxDFs++] = b;
     }
     int NumComponents(BxDFType flags = BSDF_ALL) const;
     Vector3f WorldToLocal(const Vector3f &v) const {
+        // VLOG(2) << "word to local: ss=" << ss << ", ts=" << ts << ", ns=" << ns;
         return Vector3f(Dot(v, ss), Dot(v, ts), Dot(v, ns));
     }
     Vector3f LocalToWorld(const Vector3f &v) const {

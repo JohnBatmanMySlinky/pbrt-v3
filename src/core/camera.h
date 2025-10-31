@@ -105,6 +105,12 @@ class ProjectiveCamera : public Camera {
             Translate(Vector3f(-screenWindow.pMin.x, -screenWindow.pMax.y, 0));
         RasterToScreen = Inverse(ScreenToRaster);
         RasterToCamera = Inverse(CameraToScreen) * RasterToScreen;
+
+        VLOG(2) << "film.full_resolution: " << film->fullResolution;
+        VLOG(2) << "Screen window: " << screenWindow;
+        VLOG(2) << "Screen to raster: " << ScreenToRaster;
+        VLOG(2) << "Raster to screen: " << RasterToScreen;
+        VLOG(2) << "Raster to camera: " << RasterToCamera;
     }
 
   protected:
