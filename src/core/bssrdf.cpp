@@ -347,6 +347,11 @@ Spectrum SeparableBSSRDF::Sample_Sp(const Scene &scene, Float u1,
     while (selected-- > 0) chain = chain->next;
     *pi = chain->si;
 
+    VLOG(2) << "beep boop integrating::selected_si " << pi->p;
+    VLOG(2) << "beep boop integratint::pdf_val " << this->Pdf_Sp(*pi) / nFound;
+    VLOG(2) << "beep boop integratint::sp " << this->Sp(*pi);
+
+
     // Compute sample PDF and return the spatial BSSRDF term $\Sp$
     *pdf = this->Pdf_Sp(*pi) / nFound;
     return this->Sp(*pi);
@@ -364,13 +369,19 @@ Float SeparableBSSRDF::Pdf_Sp(const SurfaceInteraction &pi) const {
                       std::sqrt(dLocal.z * dLocal.z + dLocal.x * dLocal.x),
                       std::sqrt(dLocal.x * dLocal.x + dLocal.y * dLocal.y)};
 
+    VLOG(2) << "beep boop integratint:: " << dLocal;
+    VLOG(2) << "beep boop integratint:: " << nLocal;
+    VLOG(2) << "beep boop integratint:: " << rProj[0] << ", " << rProj[1] << ", " << rProj[2];
+
     // Return combined probability from all BSSRDF sampling strategies
     Float pdf = 0, axisProb[3] = {.25f, .25f, .5f};
     Float chProb = 1 / (Float)Spectrum::nSamples;
     for (int axis = 0; axis < 3; ++axis)
-        for (int ch = 0; ch < Spectrum::nSamples; ++ch)
+        for (int ch = 0; ch < Spectrum::nSamples; ++ch){
+            VLOG(2) << "beep boop integratint:: " << axis << " - " << ch << " - " << Pdf_Sr(ch, rProj[axis]) * std::abs(nLocal[axis]);
             pdf += Pdf_Sr(ch, rProj[axis]) * std::abs(nLocal[axis]) * chProb *
                    axisProb[axis];
+        }
     return pdf;
 }
 
@@ -395,6 +406,12 @@ Float TabulatedBSSRDF::Pdf_Sr(int ch, Float r) const {
         !CatmullRomWeights(table.nRadiusSamples, table.radiusSamples.get(),
                            rOptical, &radiusOffset, radiusWeights))
         return 0.f;
+
+    VLOG(2) << "beeb boop integrating::pdf_sr " << r << " - " << sigma_t << " - " << ch << " - " << rOptical;
+    VLOG(2) << "beeb boop integrating::pdf_sr " << rOptical;
+    VLOG(2) << "beeb boop integrating::pdf_sr " << rhoOffset << ", " << radiusOffset;
+    VLOG(2) << "beeb boop integrating::pdf_sr " << rhoWeights[0] << ", " << rhoWeights[1] << ", " << rhoWeights[2] << ", " << rhoWeights[3];
+    VLOG(2) << "beeb boop integrating::pdf_sr " << radiusWeights[0] << ", " << radiusWeights[1] << ", " << radiusWeights[2] << ", " << radiusWeights[3];
 
     // Return BSSRDF profile density for channel _ch_
     Float sr = 0, rhoEff = 0;

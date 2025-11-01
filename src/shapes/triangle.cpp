@@ -294,23 +294,23 @@ bool Triangle::Intersect(const Ray &ray, Float *tHit, SurfaceInteraction *isect,
     Vector3f dpdu, dpdv;
     Point2f uv[3];
     GetUVs(uv);
-    VLOG(2) << "Triangle: p" << p0 << " " << p1 << " " << p2;
-    VLOG(2) << "Triangle: uv=" << uv[0] << " " << uv[1] << " " << uv[2];
+    // VLOG(2) << "Triangle: p" << p0 << " " << p1 << " " << p2;
+    // VLOG(2) << "Triangle: uv=" << uv[0] << " " << uv[1] << " " << uv[2];
 
     // Compute deltas for triangle partial derivatives
     Vector2f duv02 = uv[0] - uv[2], duv12 = uv[1] - uv[2];
     Vector3f dp02 = p0 - p2, dp12 = p1 - p2;
-    VLOG(2) << "Triangle: duv02=" << duv02 << ", duv12=" << duv12;
-    VLOG(2) << "Triangle: dp02=" << dp02 << ", dp12=" << dp12;
+    // VLOG(2) << "Triangle: duv02=" << duv02 << ", duv12=" << duv12;
+    // VLOG(2) << "Triangle: dp02=" << dp02 << ", dp12=" << dp12;
     Float determinant = duv02[0] * duv12[1] - duv02[1] * duv12[0];
-    VLOG(2) << "Triangle: Det=" << determinant;
+    // VLOG(2) << "Triangle: Det=" << determinant;
     bool degenerateUV = std::abs(determinant) < 1e-8;
     if (!degenerateUV) {
         Float invdet = 1 / determinant;
         dpdu = (duv12[1] * dp02 - duv02[1] * dp12) * invdet;
         dpdv = (-duv12[0] * dp02 + duv02[0] * dp12) * invdet;
     }
-    VLOG(2) << "Triangle: dpdu=" << dpdu << ", dpdv=" << dpdv;
+    // VLOG(2) << "Triangle: dpdu=" << dpdu << ", dpdv=" << dpdv;
     if (degenerateUV || Cross(dpdu, dpdv).LengthSquared() == 0) {
         // Handle zero determinant for triangle partial derivative matrix
         Vector3f ng = Cross(p2 - p0, p1 - p0);
@@ -321,7 +321,7 @@ bool Triangle::Intersect(const Ray &ray, Float *tHit, SurfaceInteraction *isect,
 
         CoordinateSystem(Normalize(ng), &dpdu, &dpdv);
     }
-    VLOG(2) << "Triangle: dpdu=" << dpdu << ", dpdv=" << dpdv;
+    // VLOG(2) << "Triangle: dpdu=" << dpdu << ", dpdv=" << dpdv;
 
     // Compute error bounds for triangle intersection
     Float xAbsSum =
